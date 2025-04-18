@@ -11,6 +11,7 @@ from community.models import Post, Vote, Comment
 from exercise.serializers import ExerciseSerializer
 from .serializers import UserSerializer
 from django.conf import settings
+from rest_framework import status
 import os
 
 # --------- Dashboard------------------
@@ -116,14 +117,43 @@ def update_document(request, document_id):
 # ------------ Questions ---------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_questions(request):
-    questions = Question.objects.select_related('document').all().values(
+def get_questions(request, id):
+    questions = Question.objects.select_related('document').filter(document_id=id).values(
         'id',
         'content',
         'document__title'  # Lấy tên tài liệu
     )
     return Response(list(questions))
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_question(request, id):
+    try:
+        document = Document.objects.get(id=id)
+    except Document.DoesNotExist:
+        return Response({"error": "Không tìm thấy tài liệu"}, status=404)
+
+    content = request.data.get('content')
+    choices = request.data.get('choices', [])
+
+    if not content or len(choices) < 2:
+        return Response({"error": "Câu hỏi hoặc đáp án không hợp lệ"}, status=400)
+
+    correct_choices = [c for c in choices if c.get('is_correct')]
+    if len(correct_choices) != 1:
+        return Response({"error": "Phải có đúng 1 đáp án đúng"}, status=400)
+
+    question = Question.objects.create(document=document, content=content)
+    for choice in choices:
+        Choice.objects.create(
+            question=question,
+            content=choice['content'],
+            is_correct=choice['is_correct']
+        )
+
+    return Response({"message": "✅ Tạo câu hỏi thành công!"}, status=201)
+
+    
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_question(request, question_id):
