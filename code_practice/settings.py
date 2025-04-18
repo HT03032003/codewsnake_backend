@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # === SECURITY ===
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-v-t27nwlt8$g4kwzin7r$^tnnragm6#+0m(*0v3hrmkt)7vhtg')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'codewsnake-backend-1.onrender.com']
+ALLOWED_HOSTS = ['codewsnake-backend.onrender.com', 'localhost', '127.0.0.1']
 
 # === APPLICATIONS ===
 INSTALLED_APPS = [
