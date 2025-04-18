@@ -14,7 +14,6 @@ env.bak/
 # Django stuff
 *.sqlite3
 db.sqlite3
-media/
 staticfiles/
 *.log
 
