@@ -9,10 +9,18 @@ django.setup()
 call_command("migrate")
 
 User = get_user_model()
-if not User.objects.filter(username='adminCodewSnake').exists():
-    user = User.objects.create_superuser(
-        username='adminCodewSnake',
-        email='admincodewsnake@gmail.com',
-        password='12345678'
-    )
-    print("✅ Admin user created: adminCodewSnake / 12345678")
+username = 'admin'
+email = 'admin@gmail.com'
+password = '12345678'
+
+user, created = User.objects.get_or_create(username=username, defaults={
+    'email': email,
+})
+
+user.set_password(password)
+user.email = email
+user.is_superuser = True
+user.is_staff = True
+user.save()
+
+print("✅ Admin user updated or created:", username, "/", password)
