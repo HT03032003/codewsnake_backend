@@ -32,6 +32,7 @@ def login(request):
 
     if user is not None:
         refresh = RefreshToken.for_user(user)
+        print(user.username -user.is_superuser)
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
