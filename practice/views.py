@@ -8,7 +8,7 @@ import traceback
 import os
 from dotenv import load_dotenv
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes, authentication_classes
+from rest_framework.decorators import permission_classes, authentication_classes, api_view
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 # Load .env
@@ -55,58 +55,56 @@ def correct_code(request):
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
 
-# @login_required
 @csrf_exempt
+@api_view(['POST'])
 def run_code(request):
-    if request.method == "POST":
-        try:
-            body = json.loads(request.body)
-            code_to_run = body.get("code", "")
-            user_inputs = body.get("inputs", [])
-        except (KeyError, json.JSONDecodeError):
-            return JsonResponse({"error": "Invalid input"}, status=400)
+    try:
+        body = json.loads(request.body)
+        code_to_run = body.get("code", "")
+        user_inputs = body.get("inputs", [])
 
-        if not code_to_run:
-            return JsonResponse({"error": "No code provided"}, status=400)
+    except (KeyError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid input"}, status=400)
 
-        output_buffer = io.StringIO()
-        sys.stdout = output_buffer
-        input_counter = 0  # Đếm số lần gọi input()
+    if not code_to_run:
+        return JsonResponse({"error": "No code provided"}, status=400)
 
-        def input_mock(prompt=""):
-            nonlocal input_counter
-            if input_counter < len(user_inputs):
-                user_input = user_inputs[input_counter]
-                input_counter += 1
-                return user_input
-            else:
-                # Khi yêu cầu thêm input
-                raise ValueError("Input required but not provided")
+    output_buffer = io.StringIO()
+    sys.stdout = output_buffer
+    input_counter = 0
 
-        try:
-            exec_globals = {"input": input_mock}
-            exec(code_to_run, exec_globals)
-        except ValueError as e:
-            output = output_buffer.getvalue()
-            sys.stdout = sys.__stdout__
-            return JsonResponse({
-                "output": output,
-                "requiresInput": True,  # Yêu cầu thêm input
-                "inputRequestIndex": input_counter
-            }, status=200)
-        except Exception as e:
-            output = output_buffer.getvalue()
-            sys.stdout = sys.__stdout__
-            return JsonResponse({
-                "output": output + f"\nError: {str(e)}\n" + traceback.format_exc(),
-                "requiresInput": False
-            }, status=400)
+    def input_mock(prompt=""):
+        nonlocal input_counter
 
+        if input_counter < len(user_inputs):
+            user_input = user_inputs[input_counter]
+            input_counter += 1
+            return user_input
+        else:
+            raise ValueError("Input required but not provided")
+
+    try:
+        exec_globals = {"input": input_mock}
+        exec(code_to_run, exec_globals)
+    except ValueError as e:
         output = output_buffer.getvalue()
         sys.stdout = sys.__stdout__
         return JsonResponse({
             "output": output,
+            "requiresInput": True,
+            "inputRequestIndex": input_counter
+        }, status=200)
+    except Exception as e:
+        output = output_buffer.getvalue()
+        sys.stdout = sys.__stdout__
+        return JsonResponse({
+            "output": output + f"\nError: {str(e)}\n" + traceback.format_exc(),
             "requiresInput": False
-        })
-    else:
-        return JsonResponse({"error": "Invalid request method"}, status=405)
+        }, status=400)
+
+    output = output_buffer.getvalue()
+    sys.stdout = sys.__stdout__
+    return JsonResponse({
+        "output": output,
+        "requiresInput": False
+    })
