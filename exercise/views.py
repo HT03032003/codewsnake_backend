@@ -111,13 +111,39 @@ def check_user_code(request, exercise_id):
         return Response({'error': 'Bài tập không tồn tại.'}, status=404)
 
     # Tạo prompt cho OpenAI
-    prompt = f"Đây là yêu cầu bài tập: {exercise.question_text}\n\nĐoạn mã người dùng cung cấp:\n{user_code}\n\nHãy cho tôi biết liệu mã này có đáp ứng yêu cầu không. Nếu đúng, hãy trả về 'success', nếu không hãy trả về 'failure'."
+    prompt = f"""
+        Bạn là một trình chấm bài tự động.
+
+        # Mô tả bài tập:
+        {exercise.question_text}
+
+        # Mã người dùng:
+        {user_code}
+
+        # Yêu cầu:
+        So sánh đoạn mã người dùng với yêu cầu đề bài.
+
+        Hãy kiểm tra:
+        - Mã có thực hiện đúng yêu cầu hay không.
+        - Không cần chấm điểm chi tiết, chỉ cần xác định đúng/sai.
+
+        # QUAN TRỌNG:
+        Chỉ trả lời bằng một trong hai từ: success hoặc failure.
+        Không được giải thích, không in thêm nội dung gì khác.
+
+        Ví dụ:
+        - Nếu đúng, trả về: success
+        - Nếu sai, trả về: failure
+
+        Bây giờ hãy trả lời:
+        """
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=50
+            max_tokens=50,
+            temperature=0
         )
         result = response['choices'][0]['message']['content']
         
