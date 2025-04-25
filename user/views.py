@@ -17,6 +17,7 @@ from rest_framework.decorators import api_view
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 import os
+from cloudinary.uploader import upload
 
 @api_view(['POST'])
 def login(request):
@@ -106,40 +107,25 @@ def profile_view(request):
 
 @api_view(['GET', 'PUT'])
 def update_profile(request):
+    user = request.user
     try:
-        user = request.user  # Lấy user hiện tại từ request (đã đăng nhập)
-        profile = Profile.objects.get(user=user)  # Lấy Profile của user này
+        profile = Profile.objects.get(user=user)
     except Profile.DoesNotExist:
         return Response({'error': 'Profile không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PUT':
-        # Xử lý việc cập nhật username (User model)
         if 'username' in request.data:
-            username = request.data['username']
-            user.username = username
-            user.save()  # Lưu lại username mới
+            user.username = request.data['username']
+            user.save()
 
-        # Xử lý việc cập nhật avatar và thông tin khác (Profile model)
-        avatar = request.FILES.get('avatar')  # Lấy avatar từ request
+        avatar = request.FILES.get('avatar')
         if avatar:
-            fs = FileSystemStorage(location=os.path.join(settings.BASE_DIR, 'media/avatars'))
+            print(avatar)
+            result = upload(avatar, folder='CodewSnake/avatars')
+            profile.avatar = result['secure_url']  # Lưu URL từ Cloudinary
 
-            # Kiểm tra nếu tệp đã tồn tại, xóa tệp cũ
-            if fs.exists(avatar.name):
-                fs.delete(avatar.name)
-
-            # Lưu tệp avatar mới
-            filename = fs.save(avatar.name, avatar)  # Lưu avatar vào thư mục media
-            file_url = f"avatars/{filename}"  # Đường dẫn file trong thư mục media
-
-            # Cập nhật đường dẫn của avatar vào profile
-            profile.avatar = file_url
-
-        # Cập nhật các trường khác của Profile (address, phone_number)
         profile.address = request.data.get('address', profile.address)
         profile.phone_number = request.data.get('phone_number', profile.phone_number)
-
-        # Lưu các thay đổi vào cơ sở dữ liệu
         profile.save()
 
-        return Response({'message': 'Cập nhật thông tin thành công!'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Cập nhật thông tin thành công!', 'avatar': profile.avatar})

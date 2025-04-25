@@ -2,9 +2,18 @@ from pathlib import Path
 from datetime import timedelta
 import os
 import dj_database_url
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 # === BASE DIR ===
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'duhbjegyn'),
+    api_key=os.getenv('CLOUDINARY_API_KEY', '244718119713368'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', 'u2K89fGoJYNdyXElymQyjuHbGbw')
+)
 
 # === SECURITY ===
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-v-t27nwlt8$g4kwzin7r$^tnnragm6#+0m(*0v3hrmkt)7vhtg')
@@ -26,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'cloudinary',
 ]
 
 # === MIDDLEWARE ===
