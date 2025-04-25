@@ -12,7 +12,6 @@ from exercise.models import UserExerciseProgress
 from .serializers import *
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -68,7 +67,7 @@ def register(request):
             # Tạo profile mặc định cho người dùng mới
             profile = Profile.objects.create(
                 user=user,
-                avatar='avatars/default.png',  # Đặt ảnh mặc định
+                avatar='https://res.cloudinary.com/duhbjegyn/image/upload/v1745568160/CodewSnake/avatars/qemhkjphxh5r6nc58jcw.jpg',  # Đặt ảnh mặc định
                 address=None,  # Giá trị mặc định là None
                 phone_number=None  # Giá trị mặc định là None
             )
