@@ -4,7 +4,7 @@ from user.models import Profile
 from document.models import Document
 
 class ProfileSerializer(serializers.ModelSerializer):
-    avatar = serializers.ImageField(use_url=True)  # Đảm bảo trả về URL của ảnh
+    avatar = serializers.URLField()
 
     class Meta:
         model = Profile
