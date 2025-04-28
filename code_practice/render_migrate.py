@@ -34,7 +34,7 @@ try:
 
     profile = Profile.objects.create(
         user=user,
-        avatar='avatars/admin.jpg',  # Đặt ảnh mặc định
+        avatar='https://res.cloudinary.com/duhbjegyn/image/upload/v1745566492/CodewSnake/avatars/gwfzugrrtfegr1iro0j1.jpg',  # Đặt ảnh mặc định
         address=None,  # Giá trị mặc định là None
         phone_number=None  # Giá trị mặc định là None
     )
