@@ -10,6 +10,7 @@ from .models import Post, Comment, Vote
 from .serializers import PostSerializer, CommentSerializer
 import os
 import random
+from cloudinary.uploader import upload
 
 @api_view(['GET'])
 def get_posts(request):
@@ -22,19 +23,21 @@ def get_posts(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_post(request):
-    serializer = PostSerializer(data=request.data)
+    data = request.data.copy()
+
+    image = request.FILES.get('image')
+    if image:
+        result = upload(image, folder='CodewSnake/posts')
+        data['image'] = result['secure_url']  
+
+    serializer = PostSerializer(data=data)
     if serializer.is_valid():
-        post = serializer.save()
-        image = request.FILES.get('image')
-        if image:
-            fs = FileSystemStorage(location=os.path.join(settings.BASE_DIR, 'media/post_images'))
-            if fs.exists(image.name):
-                fs.delete(image.name)
-            filename = fs.save(image.name, image)
-            post.image = f"/{filename}"
-        post.save()
-        return Response({'message': 'Cập nhật thông tin thành công!'}, status=status.HTTP_200_OK)
+        post = serializer.save(author=request.user)
+        return Response({'message': 'Tạo bài viết thành công!'}, status=status.HTTP_201_CREATED)
+    
+    print(serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])

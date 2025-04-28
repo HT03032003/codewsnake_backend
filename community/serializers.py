@@ -10,11 +10,14 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     author_username = serializers.ReadOnlyField(source='author.username')
-    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'title', 'content', 'author', 'author_username', 'image', 'image_url']
+        fields = ['id', 'title', 'content', 'author', 'author_username', 'image']
+        extra_kwargs = {
+            'image': {'required': False},
+        }
+
 
     def get_image_url(self, obj):
         request = self.context.get('request')
