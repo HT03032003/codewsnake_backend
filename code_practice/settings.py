@@ -74,6 +74,7 @@ TEMPLATES = [
 ]
 
 # === DATABASES ===
+
 USE_POSTGRES = os.environ.get("RENDER") == "true" or os.environ.get("DATABASE_URL")
 
 if USE_POSTGRES:
@@ -86,12 +87,12 @@ if USE_POSTGRES:
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
+            'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'code_practice',
-            'USER': 'root',
+            'USER': 'postgres',
             'PASSWORD': '03032003',
             'HOST': 'localhost',
-            'PORT': '3306',
+            'PORT': '5432',
         }
     }
 
