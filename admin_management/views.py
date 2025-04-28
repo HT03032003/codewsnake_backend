@@ -13,6 +13,7 @@ from .serializers import UserSerializer
 from django.conf import settings
 from rest_framework import status
 import os
+from cloudinary.uploader import upload
 
 # --------- Dashboard------------------
 @api_view(["GET"])
@@ -360,14 +361,10 @@ def update_post(request, post_id):
         post.title = request.data.get("title", post.title)
         post.content = request.data.get("content", post.content)
 
-        # Nếu có ảnh mới, cập nhật ảnh
         image = request.FILES.get('image')
         if image:
-            fs = FileSystemStorage(location=os.path.join(settings.BASE_DIR, 'media/post_images'))
-            if fs.exists(image.name):
-                fs.delete(image.name)
-            filename = fs.save(image.name, image)
-            post.image = f"post_images/{filename}"
+            result = upload(image, folder='CodewSnake/posts')
+            post.image = result['secure_url']  
 
         post.save()
         return Response({"message": "Cập nhật bài viết thành công!"}, status=200)
