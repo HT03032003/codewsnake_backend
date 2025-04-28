@@ -51,7 +51,7 @@ def get_post(request, id):
             'id': post.id,
             'title': post.title,
             'content': post.content,
-            'image': post.image.url if post.image else None,
+            'image': post.image if post.image else None,
             'author': post.author.username,
             'comments': list(comments),
             'upvotes': upvotes,
