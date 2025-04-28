@@ -40,7 +40,7 @@ def get_users(request):
     return Response(serializer.data, status=200)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_user_detail(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -50,7 +50,7 @@ def get_user_detail(request, user_id):
         return Response({"error": "Không tìm thấy người dùng!"}, status=404)
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def delete_user(request, user_id):
     if not request.user.is_superuser:
         return Response({"error": "Bạn không có quyền!"}, status=403)
@@ -64,7 +64,7 @@ def delete_user(request, user_id):
         return Response({"error": "Không tìm thấy người dùng!"}, status=404)
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_user(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -81,7 +81,7 @@ def update_user(request, user_id):
 
 # --------- Documents ---------------------
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def create_document(request):
     title = request.data.get("title")
     content = request.data.get("content")
@@ -93,7 +93,7 @@ def create_document(request):
     return Response(serializer.data, status=201)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_document(request, document_id):
     try:
         document = Document.objects.get(id=document_id)
@@ -103,7 +103,7 @@ def get_document(request, document_id):
         return Response({"error": "Không tìm thấy tài liệu!"}, status=404)
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_document(request, document_id):
     try:
         document = Document.objects.get(id=document_id)
@@ -115,9 +115,19 @@ def update_document(request, document_id):
     except Document.DoesNotExist:
         return Response({"error": "Không tìm thấy tài liệu!"}, status=404)
     
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_document(request, document_id):
+    try:
+        document = Document.objects.get(id=document_id)
+        document.delete()
+        return Response({"message": " Xóa tài liệu thành công!"}, status=200)
+    except Document.DoesNotExist:
+        return Response({"error": " Không tìm thấy tài liệu!"}, status=404)
+    
 # ------------ Questions ---------------
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_questions(request, id):
     questions = Question.objects.select_related('document').filter(document_id=id).values(
         'id',
@@ -127,7 +137,7 @@ def get_questions(request, id):
     return Response(list(questions))
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def create_question(request, id):
     try:
         document = Document.objects.get(id=id)
@@ -152,11 +162,11 @@ def create_question(request, id):
             is_correct=choice['is_correct']
         )
 
-    return Response({"message": "✅ Tạo câu hỏi thành công!"}, status=201)
+    return Response({"message": " Tạo câu hỏi thành công!"}, status=201)
 
     
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_question(request, question_id):
     try:
         question = Question.objects.get(id=question_id)
@@ -173,47 +183,38 @@ def get_question(request, question_id):
         return Response({"error": "Không tìm thấy câu hỏi!"}, status=404)
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_question(request, question_id):
     try:
         question = Question.objects.get(id=question_id)
         data = request.data
 
-        # Cập nhật nội dung câu hỏi
         question.content = data.get("content", question.content)
         question.save()
 
-        # Lấy danh sách đáp án mới từ request
         new_choices = data.get("choices", [])
-
-        # Danh sách id đáp án gửi từ frontend
         sent_ids = [c["id"] for c in new_choices if isinstance(c.get("id"), int)]
 
-        # Xóa những đáp án cũ không còn nữa
         Choice.objects.filter(question=question).exclude(id__in=sent_ids).delete()
 
-        # Duyệt từng đáp án để cập nhật hoặc tạo mới
         for c in new_choices:
             content = c.get("content", "").strip()
             is_correct = c.get("is_correct", False)
 
             if not content:
-                continue  # Bỏ qua đáp án rỗng
+                continue  
 
-            # Kiểm tra xem đáp án có tồn tại không
             choice = Choice.objects.filter(question=question, id=c.get("id")).first()
 
             if choice:
-                # Cập nhật đáp án cũ
                 choice.content = content
                 choice.is_correct = is_correct
                 choice.save()
             else:
-                # Tạo mới đáp án nếu không tồn tại
                 Choice.objects.create(
-                    question=question,  # Cần truyền question vào
-                    content=content,    # Cần truyền nội dung đáp án vào
-                    is_correct=is_correct  # Cần xác định đáp án đúng hay sai
+                    question=question,  
+                    content=content,    
+                    is_correct=is_correct  
                 )
 
         return Response({"message": "Cập nhật thành công!"})
@@ -226,7 +227,7 @@ def update_question(request, question_id):
 
 # --------- Exercises ---------------------
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def create_exercise(request):
     serializer = ExerciseSerializer(data=request.data)
     if serializer.is_valid():
@@ -235,7 +236,7 @@ def create_exercise(request):
     return Response(serializer.errors, status=400)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_exercise(request, exercise_id):
     try:
         exercise = Exercise.objects.get(id=exercise_id)
@@ -245,7 +246,7 @@ def get_exercise(request, exercise_id):
         return Response({"error": "Không tìm thấy bài tập!"}, status=404)
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_exercise(request, exercise_id):
     try:
         exercise = Exercise.objects.get(id=exercise_id)
@@ -258,7 +259,7 @@ def update_exercise(request, exercise_id):
         return Response({"error": "Không tìm thấy bài tập!"}, status=404)
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def delete_exercise(request, exercise_id):
     try:
         exercise = Exercise.objects.get(id=exercise_id)
@@ -269,7 +270,7 @@ def delete_exercise(request, exercise_id):
     
 # ------------ Posts ---------------
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_posts(request):
     posts = Post.objects.all()
     data = []
@@ -295,7 +296,7 @@ def get_posts(request):
     return Response(data)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def get_post_detail(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
@@ -324,7 +325,7 @@ def get_post_detail(request, post_id):
         return Response({"error": "Bài đăng không tồn tại"}, status=404)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def delete_comment(request, comment_id):
     try:
         comment = Comment.objects.get(id=comment_id)
@@ -337,18 +338,18 @@ def delete_comment(request, comment_id):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def delete_post(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
         post.delete()
         return Response({"message": "Xóa thành công!"}, status=200)
-    except Exercise.DoesNotExist:
+    except Post.DoesNotExist:
         return Response({"error": "Không tìm thấy bài tập!"}, status=404)
     
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_post(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
