@@ -6,7 +6,7 @@ from django.core.files.storage import FileSystemStorage
 from rest_framework.response import Response
 from document.models import Document, Question, Choice
 from document.serializers import DocumentSerializer
-from exercise.models import Exercise
+from exercise.models import Exercise, UserExerciseProgress
 from community.models import Post, Vote, Comment
 from exercise.serializers import ExerciseSerializer
 from .serializers import UserSerializer
@@ -45,7 +45,17 @@ def get_user_detail(request, user_id):
     try:
         user = User.objects.get(id=user_id)
         serializer = UserSerializer(user)
-        return Response(serializer.data, status=200)
+
+        total_exercises = Exercise.objects.count()
+        completed_exercises = UserExerciseProgress.objects.filter(user=user, is_completed=True).count()
+
+        return Response({
+            "user": serializer.data,
+            "exercise_stats": {
+                "completed": completed_exercises,
+                "total": total_exercises
+            }
+        }, status=200)
     except User.DoesNotExist:
         return Response({"error": "Không tìm thấy người dùng!"}, status=404)
 
