@@ -8,7 +8,7 @@ import json
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from .models import Profile
-from exercise.models import UserExerciseProgress
+from exercise.models import UserExerciseProgress, Exercise
 from .serializers import *
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -128,3 +128,60 @@ def update_profile(request):
         profile.save()
 
         return Response({'message': 'Cập nhật thông tin thành công!', 'avatar': profile.avatar})
+
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def profile_view(request):
+    user = request.user
+    try:
+        profile = Profile.objects.get(user=user)
+
+        total_completed = UserExerciseProgress.objects.filter(user=user, is_completed=True).count()
+        total_incompleted = UserExerciseProgress.objects.filter(user=user, is_completed=False).count()
+
+        # Serialize dữ liệu
+        serializer = UserProfileSerializer({
+            'user': user,
+            'profile': profile,
+            'completed': total_completed,
+            'incompleted': total_incompleted
+        })
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Profile.DoesNotExist:
+        return Response({"message": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def exercise_progress_summary(request):
+    user = request.user
+    total = Exercise.objects.count()
+    done = UserExerciseProgress.objects.filter(user=user, is_completed=True).count()
+    not_done = total - done
+    percent = (done / total * 100) if total > 0 else 0
+
+    return Response({
+        "done": done,
+        "not_done": not_done,
+        "percent": round(percent, 2)
+    })
+
+# Django
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_exercise_list(request):
+    user = request.user
+    exercises = Exercise.objects.all()
+    print(exercises)
+    progress = UserExerciseProgress.objects.filter(user=user)
+    done_ids = progress.filter(is_completed=True).values_list('exercise_id', flat=True)
+
+    result = [{
+        "title": ex.question_text,
+        "difficulty": ex.difficulty,
+        "status": "Đã làm" if ex.id in done_ids else "Chưa làm"
+    } for ex in exercises]
+
+    return Response(result)
