@@ -15,5 +15,5 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'code_practice.settings')
 
 application = get_wsgi_application()
 
-if os.environ.get('RENDER'):
-    from code_practice import render_migrate
+# if os.environ.get('RENDER'):
+#     from code_practice import render_migrate
