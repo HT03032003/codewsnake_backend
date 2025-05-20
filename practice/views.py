@@ -1,30 +1,31 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-import os
-import tempfile
-import subprocess
-import ast
 import openai
+import io
+import sys
+import traceback
+import os
+import ast
 from dotenv import load_dotenv
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes, authentication_classes, api_view
+from rest_framework.decorators import permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
-# Load env
+# Load .env
 load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-# Sử dụng biến môi trường để linh hoạt giữa Windows / Linux
-PYTHON_EXECUTABLE = os.getenv('PYTHON_EXECUTABLE', 'python')  # Mặc định là 'python'
 
 def is_code_safe(code):
-    ALLOWED_IMPORTS = {'math', 'random', 'datetime', 'numpy'}
+    """
+    Kiểm tra mã có chứa import nguy hiểm hoặc gọi hàm độc hại không
+    """
+    ALLOWED_IMPORTS = {'math', 'random', 'datetime'}
 
     try:
         tree = ast.parse(code)
         for node in ast.walk(tree):
-            # Cấm các loại import không nằm trong whitelist
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if alias.name not in ALLOWED_IMPORTS:
@@ -34,73 +35,14 @@ def is_code_safe(code):
                 if node.module not in ALLOWED_IMPORTS:
                     return False
 
-            # Cấm các lệnh gọi hàm nguy hiểm
             if isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name):
-                    if node.func.id in ['exec', 'eval', 'compile', 'open', '__import__', 'globals', 'locals']:
+                    if node.func.id in ['exec', 'eval', 'compile', 'open', '__import__', 'globals', 'locals', 'os', 'system']:
                         return False
-
         return True
-    except Exception as e:
-        print("AST parsing error:", e)
+    except Exception:
         return False
 
-@csrf_exempt
-@api_view(['POST'])
-def run_code(request):
-    try:
-        body = json.loads(request.body)
-        code = body.get("code", "")
-        inputs = body.get("inputs", [])
-    except (KeyError, json.JSONDecodeError):
-        return JsonResponse({"error": "Invalid input"}, status=400)
-
-    if not code:
-        return JsonResponse({"error": "No code provided"}, status=400)
-
-    if not is_code_safe(code):
-        return JsonResponse({"output": "❌ERROR!"}, status=400)
-
-    try:
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as tmp_file:
-            tmp_file.write(code)
-            tmp_path = tmp_file.name
-    except Exception as e:
-        return JsonResponse({"output": f"Lỗi khi tạo file tạm: {str(e)}"}, status=500)
-
-    try:
-        input_data = '\n'.join(inputs)
-        result = subprocess.run(
-            [PYTHON_EXECUTABLE, tmp_path],
-            input=input_data.encode(),
-            capture_output=True,
-            timeout=3
-        )
-        stdout = result.stdout.decode()
-        stderr = result.stderr.decode()
-
-        if stderr:
-            return JsonResponse({
-                "output": stdout + "\n" + stderr,
-                "requiresInput": False
-            }, status=400)
-
-        return JsonResponse({
-            "output": stdout,
-            "requiresInput": False
-        }, status=200)
-    except subprocess.TimeoutExpired:
-        return JsonResponse({
-            "output": "⏰ Mã chạy quá lâu hoặc có vòng lặp vô hạn.",
-            "requiresInput": False
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            "output": f"⚠️ Lỗi không xác định: {str(e)}",
-            "requiresInput": False
-        }, status=500)
-    finally:
-        os.remove(tmp_path)
 
 @authentication_classes([SessionAuthentication, TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -135,3 +77,62 @@ def correct_code(request):
             return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@csrf_exempt
+def run_code(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        code_to_run = body.get("code", "")
+        user_inputs = body.get("inputs", [])
+    except (KeyError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid input"}, status=400)
+
+    if not code_to_run:
+        return JsonResponse({"error": "No code provided"}, status=400)
+
+    if not is_code_safe(code_to_run):
+        return JsonResponse({"output": "❌ Mã chứa thao tác không an toàn."}, status=400)
+
+    output_buffer = io.StringIO()
+    sys.stdout = output_buffer
+    input_counter = 0
+
+    def input_mock(prompt=""):
+        nonlocal input_counter
+        if input_counter < len(user_inputs):
+            val = user_inputs[input_counter]
+            input_counter += 1
+            return val
+        else:
+            raise ValueError("Input required but not provided")
+
+    try:
+        safe_globals = {"__builtins__": {"print": print, "range": range, "len": len, "int": int, "str": str, "float": float, "input": input_mock}}
+        exec(code_to_run, safe_globals)
+        output = output_buffer.getvalue()
+        sys.stdout = sys.__stdout__
+        return JsonResponse({
+            "output": output,
+            "requiresInput": False
+        }, status=200)
+
+    except ValueError as e:
+        output = output_buffer.getvalue()
+        sys.stdout = sys.__stdout__
+        return JsonResponse({
+            "output": output,
+            "requiresInput": True,
+            "inputRequestIndex": input_counter
+        }, status=200)
+
+    except Exception as e:
+        output = output_buffer.getvalue()
+        sys.stdout = sys.__stdout__
+        return JsonResponse({
+            "output": output + f"\nError: {str(e)}\n" + traceback.format_exc(),
+            "requiresInput": False
+        }, status=400)
