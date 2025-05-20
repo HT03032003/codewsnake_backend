@@ -348,7 +348,6 @@ def delete_comment(request, comment_id):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAdminUser])
 def delete_post(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
@@ -359,7 +358,6 @@ def delete_post(request, post_id):
     
 
 @api_view(["PUT"])
-@permission_classes([IsAdminUser])
 def update_post(request, post_id):
     try:
         post = Post.objects.get(id=post_id)
