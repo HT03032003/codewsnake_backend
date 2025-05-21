@@ -15,6 +15,7 @@ urlpatterns = [
     path("document/delete/<int:document_id>/", delete_document, name="delete_document"),
     path("question/<int:question_id>/", get_question, name="question"),
     path("question/update/<int:question_id>/", update_question, name="update_question"),
+    path('question/delete/<int:question_id>/', delete_question, name='delete_question'),
     path("exercise/create/", create_exercise, name="create_exercise"),
     path("exercise/<int:exercise_id>/", get_exercise, name="get_exercise"),
     path("exercise/update/<int:exercise_id>/", update_exercise, name="update_exercise"),

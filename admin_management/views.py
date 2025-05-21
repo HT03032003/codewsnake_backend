@@ -234,6 +234,15 @@ def update_question(request, question_id):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def delete_question(request, question_id):
+    try:
+        question = Question.objects.get(id=question_id)
+        question.delete()
+        return Response({"message": "Xóa thành công!"}, status=200)
+    except Question.DoesNotExist:
+        return Response({"error": "Không tìm thấy câu hỏi."}, status=404)
 
 # --------- Exercises ---------------------
 @api_view(["POST"])
