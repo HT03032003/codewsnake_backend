@@ -8,4 +8,5 @@ urlpatterns = [
     path('post/<int:id>/', get_post, name='post'),
     path('post/<int:post_id>/comment/create/', create_comment, name='create_comment'),
     path('post/<int:post_id>/vote/', post_vote, name='post-vote'),
+    path('notifications/', get_notifications, name='get_notifications'),
 ]

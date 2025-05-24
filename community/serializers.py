@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Comment
+from .models import Post, Comment, Notification
 
 class RecursiveCommentSerializer(serializers.ModelSerializer):
     author_username = serializers.ReadOnlyField(source='author.username')
@@ -37,4 +37,9 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ['id', 'title', 'content', 'author', 'author_username', 'image']
 
-    # Không cần get_image_url vì image là URL, nếu dùng FileField thì mới cần.
+class NotificationSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    post_title = serializers.CharField(source='post.title', read_only=True)
+    class Meta:
+        model = Notification
+        fields = ['id', 'recipient', 'sender', 'sender_name', 'post', 'post_title', 'notification_type', 'content', 'is_read', 'created_at']

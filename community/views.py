@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from .models import Post, Comment, Vote
+from .models import Post, Comment, Vote, Notification
 from .serializers import PostSerializer, CommentSerializer
 import random
 from cloudinary.uploader import upload
@@ -56,6 +56,36 @@ def get_post(request, id):
     except Post.DoesNotExist:
         return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
 
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def create_comment(request, post_id):
+#     post = get_object_or_404(Post, id=post_id)
+#     data = request.data.copy()
+#     data["post"] = post.id
+#     data["author"] = request.user.id
+#     serializer = CommentSerializer(data=data)
+#     if serializer.is_valid():
+#         serializer.save()
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def post_vote(request, post_id):
+#     post = get_object_or_404(Post, id=post_id)
+#     user = request.user
+#     vote_type = int(request.data.get('vote_type', 0))
+#     existing_vote = Vote.objects.filter(user=user, post=post).first()
+#     if existing_vote:
+#         if existing_vote.vote_type == vote_type:
+#             existing_vote.delete()
+#             return Response({"message": "Vote removed"}, status=status.HTTP_200_OK)
+#         existing_vote.vote_type = vote_type
+#         existing_vote.save()
+#         return Response({"message": "Vote updated"}, status=status.HTTP_200_OK)
+#     Vote.objects.create(user=user, post=post, vote_type=vote_type)
+#     return Response({"message": "Vote added"}, status=status.HTTP_200_OK)
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_comment(request, post_id):
@@ -65,7 +95,16 @@ def create_comment(request, post_id):
     data["author"] = request.user.id
     serializer = CommentSerializer(data=data)
     if serializer.is_valid():
-        serializer.save()
+        comment = serializer.save()
+        # Notification nếu người comment KHÔNG phải là tác giả
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                post=post,
+                notification_type='comment',
+                content=f"{request.user.username} đã bình luận bài viết của bạn."
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -82,6 +121,33 @@ def post_vote(request, post_id):
             return Response({"message": "Vote removed"}, status=status.HTTP_200_OK)
         existing_vote.vote_type = vote_type
         existing_vote.save()
+        # Notification nếu là upvote mới và không phải tác giả
+        if vote_type == 1 and post.author != user:
+            Notification.objects.create(
+                recipient=post.author,
+                sender=user,
+                post=post,
+                notification_type='like',
+                content=f"{user.username} đã thích bài viết của bạn."
+            )
         return Response({"message": "Vote updated"}, status=status.HTTP_200_OK)
     Vote.objects.create(user=user, post=post, vote_type=vote_type)
+    # Notification nếu là upvote mới và không phải tác giả
+    if vote_type == 1 and post.author != user:
+        Notification.objects.create(
+            recipient=post.author,
+            sender=user,
+            post=post,
+            notification_type='like',
+            content=f"{user.username} đã thích bài viết của bạn."
+        )
     return Response({"message": "Vote added"}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    user = request.user
+    notifications = user.notifications.order_by('-created_at')[:50]  # lấy 50 thông báo mới nhất
+    from .serializers import NotificationSerializer
+    serializer = NotificationSerializer(notifications, many=True)
+    return Response(serializer.data)

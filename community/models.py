@@ -41,5 +41,17 @@ class Vote(models.Model):
 
     def __str__(self):
         return f"{self.vote_type} by {self.user} on {self.post}"
-# upload_to='post_images/',
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('comment', 'Comment'),
+        ('like', 'Like'),
+    )
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    notification_type = models.CharField(max_length=10, choices=NOTIFICATION_TYPES)
+    content = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
