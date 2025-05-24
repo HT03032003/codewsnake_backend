@@ -1,12 +1,34 @@
 from rest_framework import serializers
 from .models import Post, Comment
 
-class CommentSerializer(serializers.ModelSerializer):
+class RecursiveCommentSerializer(serializers.ModelSerializer):
     author_username = serializers.ReadOnlyField(source='author.username')
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'author', 'author_username', 'content', 'created_at']
+        fields = ['id', 'post', 'author', 'author_username', 'content', 'parent', 'created_at', 'replies']
+
+    def get_replies(self, obj):
+        # Lấy tất cả replies (comment con) của comment hiện tại
+        children = obj.replies.all().order_by('created_at')
+        if children:
+            return RecursiveCommentSerializer(children, many=True).data
+        return []
+
+class CommentSerializer(serializers.ModelSerializer):
+    author_username = serializers.ReadOnlyField(source='author.username')
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'post', 'author', 'author_username', 'content', 'parent', 'created_at', 'replies']
+
+    def get_replies(self, obj):
+        children = obj.replies.all().order_by('created_at')
+        if children:
+            return RecursiveCommentSerializer(children, many=True).data
+        return []
 
 class PostSerializer(serializers.ModelSerializer):
     author_username = serializers.ReadOnlyField(source='author.username')
@@ -14,13 +36,5 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ['id', 'title', 'content', 'author', 'author_username', 'image']
-        extra_kwargs = {
-            'image': {'required': False},
-        }
 
-
-    def get_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.image:
-            return request.build_absolute_uri(obj.image.url)
-        return None
+    # Không cần get_image_url vì image là URL, nếu dùng FileField thì mới cần.
