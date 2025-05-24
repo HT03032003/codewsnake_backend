@@ -11,7 +11,7 @@ call_command("migrate")
 
 User = get_user_model()
 
-User.objects.all().delete()
+# User.objects.all().delete()
 username = 'admin'
 email = 'admin@gmail.com'
 password = '12345678'
